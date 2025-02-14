@@ -4,6 +4,8 @@ use std::fmt::Debug;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+use crate::orchestrator::request::LLMRequest;
+
 /// General options for Language Models. Not all
 /// will be supported in all models.
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
@@ -31,10 +33,10 @@ pub type Duration = u64;
 pub type CreatedAt = String;
 pub type Count = u32;
 
-pub trait Ollamable: Debug + Clone + Serialize + Default {
+pub trait Ollamable: Debug + Clone + Serialize + Default + Into<LLMRequest> {
     fn set_model<T: Into<String>>(&mut self, model: T);
-
     fn webhook(&self) -> &Option<String>;
+    fn path(&self) -> &'static str;
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

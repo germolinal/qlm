@@ -6,7 +6,7 @@ use axum::{
 };
 use prem_lm::{
     getport,
-    ollama::{chat::ChatRequest, completion::CompletionRequest},
+    ollama::{chat::ChatRequest, common::Ollamable, generate::GenerateRequest},
 };
 use reqwest;
 use serde::{Deserialize, Serialize};
@@ -19,8 +19,7 @@ struct Chat {
 }
 
 async fn chat(Json(data): Json<ChatRequest>) -> impl IntoResponse {
-    dbg!("chatting!");
-    let url = format!("{}/api/chat", OLLAMA_URL);
+    let url = format!("{}/api/{}", OLLAMA_URL, data.path());
     let client = reqwest::Client::new();
 
     let b = serde_json::to_string(&data).expect("could not serialise in worker");
@@ -34,9 +33,8 @@ async fn chat(Json(data): Json<ChatRequest>) -> impl IntoResponse {
     res.text().await.expect("worker text")
 }
 
-async fn generate(Json(data): Json<CompletionRequest>) -> impl IntoResponse {
-    dbg!("completing!");
-    let url = format!("{}/api/generate", OLLAMA_URL);
+async fn generate(Json(data): Json<GenerateRequest>) -> impl IntoResponse {
+    let url = format!("{}/api/{}", OLLAMA_URL, data.path());
     let client = reqwest::Client::new();
 
     let b = serde_json::to_string(&data).expect("Could not transform into string");
@@ -52,7 +50,7 @@ async fn generate(Json(data): Json<CompletionRequest>) -> impl IntoResponse {
 }
 
 async fn healthcheck() -> impl IntoResponse {
-    let body = CompletionRequest {
+    let body = GenerateRequest {
         model: "gemma2".to_string(),
         prompt:
             "This is a health check of our systems. If you are OK, say it in a funny way (and making references to popupar culture) in no more than 5 words."

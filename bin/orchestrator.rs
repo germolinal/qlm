@@ -3,90 +3,91 @@ use axum::{
     http::StatusCode,
     middleware::{self, Next},
     response::IntoResponse,
+    routing::post,
     Json, Router,
 };
-use prem_lm::getport;
-use prem_lm::ollama::common::Ollamable;
-use prem_lm::ollama::completion::CompletionResponse;
-use prem_lm::orchestrator::LLMHandlerResponse;
-use prem_lm::orchestrator::LLMRequest;
-use prem_lm::{ollama::completion::CompletionRequest, orchestrator::OrchestratorState};
+use prem_lm::{
+    ollama::common::Ollamable,
+    orchestrator::{
+        response::LLMHandlerResponse,
+        state::{OrchestratorState, SharedState},
+    },
+};
+use prem_lm::{
+    ollama::{
+        chat::{ChatReponse, ChatRequest},
+        generate::{GenerateRequest, GenerateResponse},
+    },
+    orchestrator::{request::LLMRequest, worker::Worker},
+};
+use serde::{de::DeserializeOwned, Serialize};
+use tokio::sync::mpsc::channel;
 
+use futures::lock::Mutex;
 use std::env;
 use std::fs;
 use std::sync::Arc;
-use std::sync::Mutex;
-use tokio::sync::mpsc::Receiver;
-
-use serde::{Deserialize, Serialize};
-
-#[derive(Default, Debug, Clone, Serialize, Deserialize)]
-struct Chat {
-    msg: String,
-}
-
-// #[axum_macros::debug_handler]
-// async fn chat(
-//     State(state): State<Arc<Mutex<OrchestratorState>>>,
-//     data: Json<CompletionRequest>,
-// ) -> impl IntoResponse {
-//     handler("chat", state, data).await
-// }
 
 #[axum_macros::debug_handler]
-async fn completion(
-    State(state): State<Arc<Mutex<OrchestratorState>>>,
-    Json(data): Json<CompletionRequest>,
-) -> impl IntoResponse {
-    handler("generate", state, data).await
+async fn chat(
+    State(state): State<SharedState>,
+    Json(req): Json<ChatRequest>,
+) -> LLMHandlerResponse<ChatReponse> {
+    handler::<ChatRequest, ChatReponse>(state, req).await
 }
 
 #[axum_macros::debug_handler]
-async fn async_completion(
-    State(state): State<Arc<Mutex<OrchestratorState>>>,
-    Json(data): Json<CompletionRequest>,
-) -> impl IntoResponse {
-    handler("generate", state, data).await
+async fn generate(
+    State(state): State<SharedState>,
+    Json(req): Json<GenerateRequest>,
+) -> LLMHandlerResponse<GenerateResponse> {
+    handler::<GenerateRequest, GenerateResponse>(state, req).await
 }
 
-#[tracing::instrument]
-async fn handler(
-    path: &'static str,
-    state: Arc<Mutex<OrchestratorState>>,
-    mut data: CompletionRequest,
-) -> LLMHandlerResponse<CompletionResponse> {
-    OrchestratorState::call_ollama(state, path, data).await
+#[axum_macros::debug_handler]
+async fn async_chat(
+    State(state): State<SharedState>,
+    Json(req): Json<ChatRequest>,
+) -> LLMHandlerResponse<&'static str> {
+    async_handler::<ChatRequest>(state, req).await
 }
 
-#[tracing::instrument]
-async fn hook_handler(
-    path: &str,
-    state: Arc<Mutex<OrchestratorState>>,
-    data: CompletionRequest,
-) -> LLMHandlerResponse<CompletionResponse> {
-    if data.webhook().is_some() {
-        // Queue message for later... might be process right away, or not
-        let state_guard = state.lock().unwrap();
-        if let Some(q) = &state_guard.queue {
-            if let Err(_) = q.send(data.into()).await {
-                let err = "Failed to enqueue task.".to_string();
-                return LLMHandlerResponse::Err((StatusCode::INTERNAL_SERVER_ERROR, err.into()));
-            }
-            let msg = "Task queued for later processing.".to_string();
-            let ret = CompletionResponse {
-                response: msg.into(),
-                ..CompletionResponse::default()
-            };
-            LLMHandlerResponse::Ok((StatusCode::ACCEPTED, ret))
-        } else {
-            unreachable!("queue should never be None");
-        }
+#[axum_macros::debug_handler]
+async fn async_generate(
+    State(state): State<SharedState>,
+    Json(req): Json<GenerateRequest>,
+) -> LLMHandlerResponse<&'static str> {
+    async_handler::<GenerateRequest>(state, req).await
+}
+
+async fn handler<I: Ollamable, O: Serialize + DeserializeOwned>(
+    state: SharedState,
+    req: I,
+) -> LLMHandlerResponse<O> {
+    let mut guard = state.lock().await;
+    let w_index = guard.get_available_worker();
+    if let Some(i) = w_index {
+        let url = guard.workers[i].address.clone();
+        drop(guard);
+        Worker::process::<I, O>(state, i, url, req).await
     } else {
-        LLMHandlerResponse::Err((
-            StatusCode::BAD_REQUEST,
-            "a webhook field is required".into(),
-        ))
+        LLMHandlerResponse::Err((StatusCode::TOO_MANY_REQUESTS, "There are too many requests at the moment. Try using the async path if your request can wait".to_string()))
     }
+}
+
+async fn async_handler<I: Ollamable>(
+    state: SharedState,
+    req: I,
+) -> LLMHandlerResponse<&'static str> {
+    if req.webhook().is_none() {
+        return LLMHandlerResponse::Err((
+            StatusCode::BAD_REQUEST,
+            "a webhook field is required for asynchronous processing".to_string(),
+        ));
+    }
+    let mut guard = state.lock().await;
+    let req: LLMRequest = req.into();
+    guard.enqueue(req).await
 }
 
 async fn auth(request: Request, next: Next) -> impl IntoResponse {
@@ -94,59 +95,8 @@ async fn auth(request: Request, next: Next) -> impl IntoResponse {
     next.run(request).await
 }
 
-async fn process_queue(state: Arc<Mutex<OrchestratorState>>, mut receiver: Receiver<LLMRequest>) {
-    while let Some(req) = receiver.recv().await {
-        let hook = req
-            .webhook()
-            .expect("messages with no webhook should be caught before queueing them");
-
-        let path = req.path();
-        let ret = match req {
-            LLMRequest::Completion(body) => {
-                match OrchestratorState::call_ollama(state.clone(), path, body).await {
-                    LLMHandlerResponse::Ok((_, d)) => {
-                        serde_json::to_string(&d).expect("could not serialize")
-                    }
-                    LLMHandlerResponse::Err((_, e)) => e,
-                }
-            }
-            LLMRequest::Chat(_r) => todo!(), //, handler(path, state, r.clone()).await,
-        };
-        let client = reqwest::Client::new();
-        let r = client
-            .post(hook)
-            .header("Content-Type", "application/json")
-            .body(ret)
-            .send()
-            .await;
-        if let Err(e) = r {
-            tracing::error!("{}", e)
-        }
-    }
-
-    // let data = {
-    //     let state_guard = state.lock().unwrap();
-
-    //     let mut queue_rx = state_guard.queue.unwrap().subscribe();
-    // };
-    // while let Ok(task) = queue_rx.recv().await {
-    //     // ... Actual processing logic ...
-    //     let result = format!("Processed later: {}", task.data);
-
-    //     // Send result to webhook
-    //     if let Some(url) = task.webhook_url {
-    //         let client = reqwest::Client::new();
-    //         let _ = client.post(url).json(&result).send().await; // Handle errors appropriately
-    //     }
-    // }
-}
-
 #[tokio::main]
 async fn main() {
-    tracing_subscriber::fmt()
-        // .with_target(false)
-        .compact()
-        .init();
     let args: Vec<String> = env::args().collect();
     let mut state: OrchestratorState = if args.len() == 1 {
         eprintln!("... no config file passed. Using an empty one");
@@ -162,33 +112,28 @@ async fn main() {
             }
         }
     };
-    let (tx, rx) = tokio::sync::mpsc::channel::<LLMRequest>(100);
-    state.queue = Some(tx);
+
+    let (tx, rx) = channel::<bool>(400);
+    state.sender = Some(tx.clone());
     let state = Arc::new(Mutex::new(state));
 
-    // build our application with a single route
+    // build our application with a route
     let app = Router::new()
-        // Dashboard?
-        // .route("/", axum::routing::get(healthcheck))
-        // Ask for chat completion
-        // .route("/chat", axum::routing::post(handler))
-        // Ask for completion
-        // .route("/chat", axum::routing::post(chat))
-        .route("/generate", axum::routing::post(completion))
-        .route("/async_generate", axum::routing::post(async_completion))
-        // Implement authorisation/authentication
+        .route("/chat", post(chat))
+        .route("/generate", post(generate))
+        .route("/async_chat", post(async_chat))
+        .route("/async_generate", post(async_generate))
         .with_state(state.clone())
-        // .layer(TraceLayer::new_for_http()); // Add the TraceLayer
-        .layer(middleware::from_fn(auth));
+        .layer(middleware::from_fn(auth)); // auth
 
-    // Spawn the processing of new elements in the queue
-    tokio::spawn(async move { process_queue(state, rx).await });
+    tokio::spawn(async move {
+        OrchestratorState::process_queue(rx, state).await;
+    });
 
-    let addr = std::net::SocketAddr::from(([0, 0, 0, 0], getport(3000)));
-    let listener = tokio::net::TcpListener::bind(addr)
+    // run it
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")
         .await
-        .expect("could not build listener");
-    tracing::debug!("listening on {}", addr);
-
-    axum::serve(listener, app).await.expect("server panic!");
+        .unwrap();
+    println!("listening on {}", listener.local_addr().unwrap());
+    axum::serve(listener, app).await.unwrap();
 }

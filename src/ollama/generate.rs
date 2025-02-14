@@ -4,7 +4,7 @@ use super::common::{Count, CreatedAt, Duration, ModelOptions, Ollamable, ReturnS
 
 /// Used with `/api/generate` request to Ollama
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
-pub struct CompletionRequest {
+pub struct GenerateRequest {
     pub webhook: Option<String>,
     // Parameters (according to Ollama's docs)
     /// The name of the model to use
@@ -44,17 +44,20 @@ pub struct CompletionRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub keep_alive: Option<u8>,
 }
-impl Ollamable for CompletionRequest {
+impl Ollamable for GenerateRequest {
     fn set_model<T: Into<String>>(&mut self, model: T) {
         self.model = model.into()
     }
     fn webhook(&self) -> &Option<String> {
         &self.webhook
     }
+    fn path(&self) -> &'static str {
+        "generate"
+    }
 }
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
-pub struct CompletionResponse {
+pub struct GenerateResponse {
     pub model: String,
     pub created_at: CreatedAt,
     pub response: String,
@@ -68,7 +71,7 @@ pub struct CompletionResponse {
 }
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
-pub struct StreamedCompletionResponse {
+pub struct StreamedGenerateResponse {
     pub model: String,
     pub created_at: CreatedAt,
     pub response: String,

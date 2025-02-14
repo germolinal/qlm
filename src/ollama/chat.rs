@@ -66,6 +66,9 @@ impl Ollamable for ChatRequest {
     fn webhook(&self) -> &Option<String> {
         &self.webhook
     }
+    fn path(&self) -> &'static str {
+        "chat"
+    }
 }
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
