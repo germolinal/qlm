@@ -12,10 +12,6 @@ path = "bin/worker.rs"
 name = "orchestrator"
 path = "bin/orchestrator.rs"
 
-[[bin]]
-name = "axum_queue_test"
-path = "bin/axum_queue_test.rs"
-
 
 [dependencies]
 reqwest = { version = "0.12.12", features = ["json"] }
