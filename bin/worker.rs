@@ -22,7 +22,7 @@ async fn chat(Json(data): Json<ChatRequest>) -> impl IntoResponse {
     let url = format!("{}/api/{}", OLLAMA_URL, data.path());
     let client = reqwest::Client::new();
 
-    let b = serde_json::to_string(&data).expect("could not serialise in worker");
+    let b = serde_json::to_vec(&data).expect("could not serialise within worker/chat");
     let res = match client.post(url).body(b).send().await {
         Ok(r) => r,
         Err(e) => {
@@ -37,8 +37,7 @@ async fn generate(Json(data): Json<GenerateRequest>) -> impl IntoResponse {
     let url = format!("{}/api/{}", OLLAMA_URL, data.path());
     let client = reqwest::Client::new();
 
-    let b = serde_json::to_string(&data).expect("Could not transform into string");
-    dbg!(&b);
+    let b = serde_json::to_vec(&data).expect("could not serialise within worker/generate");
     let res = match client.post(url).body(b).send().await {
         Ok(r) => r,
         Err(e) => {
