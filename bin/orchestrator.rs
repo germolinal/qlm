@@ -124,14 +124,15 @@ async fn main() {
         .route("/async_chat", post(async_chat))
         .route("/async_generate", post(async_generate))
         .with_state(state.clone())
-        .layer(middleware::from_fn(auth)); // auth
+        // Auth
+        .layer(middleware::from_fn(auth));
 
     tokio::spawn(async move {
         OrchestratorState::process_queue(rx, state).await;
     });
 
     // run it
-    let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:8080")
         .await
         .unwrap();
     println!("listening on {}", listener.local_addr().unwrap());

@@ -1,24 +1,27 @@
 use axum::{
     extract::Request,
+    http::StatusCode,
     middleware::{self, Next},
     response::IntoResponse,
     Json, Router,
 };
 use prem_lm::{
     getport,
-    ollama::{chat::ChatRequest, common::Ollamable, generate::GenerateRequest},
+    ollama::{
+        chat::{ChatReponse, ChatRequest},
+        common::Ollamable,
+        generate::{GenerateRequest, GenerateResponse},
+    },
+    orchestrator::response::LLMHandlerResponse,
 };
 use reqwest;
-use serde::{Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Serialize};
 
 const OLLAMA_URL: &str = "http://localhost:11434";
 
-#[derive(Default, Debug, Clone, Serialize, Deserialize)]
-struct Chat {
-    msg: String,
-}
-
-async fn chat(Json(data): Json<ChatRequest>) -> impl IntoResponse {
+async fn call_ollama<I: Ollamable, O: Serialize + DeserializeOwned>(
+    data: I,
+) -> LLMHandlerResponse<O> {
     let url = format!("{}/api/{}", OLLAMA_URL, data.path());
     let client = reqwest::Client::new();
 
@@ -26,26 +29,24 @@ async fn chat(Json(data): Json<ChatRequest>) -> impl IntoResponse {
     let res = match client.post(url).body(b).send().await {
         Ok(r) => r,
         Err(e) => {
-            eprintln!("{}", e);
-            return e.to_string();
+            let status = e.status().unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);
+            let e = format!("{}", e);
+            return LLMHandlerResponse::Err((status, e));
         }
     };
-    res.text().await.expect("worker text")
+    let j: O = res
+        .json()
+        .await
+        .expect("could not serialise Ollama response");
+    LLMHandlerResponse::Ok((StatusCode::OK, j))
+}
+
+async fn chat(Json(data): Json<ChatRequest>) -> impl IntoResponse {
+    call_ollama::<ChatRequest, ChatReponse>(data).await
 }
 
 async fn generate(Json(data): Json<GenerateRequest>) -> impl IntoResponse {
-    let url = format!("{}/api/{}", OLLAMA_URL, data.path());
-    let client = reqwest::Client::new();
-
-    let b = serde_json::to_vec(&data).expect("could not serialise within worker/generate");
-    let res = match client.post(url).body(b).send().await {
-        Ok(r) => r,
-        Err(e) => {
-            eprintln!("xxx {}", e);
-            return e.to_string();
-        }
-    };
-    res.text().await.unwrap()
+    call_ollama::<GenerateRequest, GenerateResponse>(data).await
 }
 
 async fn healthcheck() -> impl IntoResponse {
@@ -56,7 +57,7 @@ async fn healthcheck() -> impl IntoResponse {
                 .to_string(),
         ..Default::default()
     };
-    generate(Json(body)).await
+    call_ollama::<GenerateRequest, GenerateResponse>(body).await
 }
 
 async fn auth(request: Request, next: Next) -> impl IntoResponse {
@@ -78,6 +79,7 @@ async fn main() {
         .route("/generate", axum::routing::post(generate))
         // Implement authorisation/authentication
         .layer(middleware::from_fn(auth));
+
     let addr = std::net::SocketAddr::from(([0, 0, 0, 0], getport(4321)));
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
     tracing::debug!("listening on {}", addr);
