@@ -34,11 +34,14 @@ async fn call_ollama<I: Ollamable, O: Serialize + DeserializeOwned>(
             return LLMHandlerResponse::Err((status, e));
         }
     };
+    // let s: String = res.text().await.unwrap();
+    // dbg!(s);
     let j: O = res
         .json()
         .await
         .expect("could not serialise Ollama response");
     LLMHandlerResponse::Ok((StatusCode::OK, j))
+    // todo!()
 }
 
 async fn chat(Json(data): Json<ChatRequest>) -> impl IntoResponse {
@@ -51,7 +54,7 @@ async fn generate(Json(data): Json<GenerateRequest>) -> impl IntoResponse {
 
 async fn healthcheck() -> impl IntoResponse {
     let body = GenerateRequest {
-        model: "gemma2".to_string(),
+        model: Some("gemma2:2b".to_string()),
         prompt:
             "This is a health check of our systems. If you are OK, say it in a funny way (and making references to popupar culture) in no more than 5 words."
                 .to_string(),

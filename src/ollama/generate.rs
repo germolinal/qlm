@@ -8,7 +8,7 @@ pub struct GenerateRequest {
     pub webhook: Option<String>,
     // Parameters (according to Ollama's docs)
     /// The name of the model to use
-    pub model: String,
+    pub model: Option<String>,
     /// the prompt to generate a response for
     pub prompt: String,
     /// the text after the model response (Seems to be useful for code completion? e.g., 'suffix=return result')
@@ -46,7 +46,7 @@ pub struct GenerateRequest {
 }
 impl Ollamable for GenerateRequest {
     fn set_model<T: Into<String>>(&mut self, model: T) {
-        self.model = model.into()
+        self.model = Some(model.into())
     }
     fn webhook(&self) -> &Option<String> {
         &self.webhook

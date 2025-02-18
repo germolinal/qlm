@@ -39,9 +39,15 @@ wss.on("connection", (ws: WebSocket) => {
 export async function POST(req: NextRequest) {
   if (handler) {
     let data = await req.json();
-    handler.send(data);
+    console.log("posted back", data);
+    handler!.send(data);
     return NextResponse.json({ msg: "posting message" });
   } else {
+    console.error("No handler!!!");
     return NextResponse.json({ msg: "no handler" });
   }
+}
+
+export async function GET(req: NextRequest) {
+  return NextResponse.json({ msg: "Ok!" });
 }
