@@ -1,10 +1,11 @@
 "use client";
 // pages/index.js
 import { useEffect, useState, useRef } from "react";
+type Flags = { inappropriate: boolean; contains_pii: boolean };
 
 export default function Home() {
   const [sentMessages, setSentMessages] = useState<string[]>([]);
-  const [responses, setResponses] = useState<string[]>([]);
+  const [responses, setResponses] = useState<Flags[]>([]);
   const ws = useRef(null);
 
   useEffect(() => {
@@ -17,9 +18,9 @@ export default function Home() {
     ws.current.onmessage = (event: any) => {
       let data = JSON.parse(event.data);
       if (data.response) {
-        setResponses((old) => [...old, data.response]);
+        setResponses((old) => [...old, JSON.parse(data.response)]);
       } else if (data.message && data.message.content) {
-        setResponses((old) => [...old, data.message.content]);
+        setResponses((old) => [...old, JSON.parse(data.message.content)]);
       } else {
         console.error("data", data, typeof data);
         console.error("response", data.response, typeof data.response);
@@ -81,37 +82,55 @@ export default function Home() {
     console.log(msg);
   };
   return (
-    <div className="flex w-full">
-      <div className="h-full flex-grow">
-        <ul>
-          {sentMessages.map((m: string, i: number) => {
-            return <li key={i}>{m}</li>;
-          })}
-        </ul>
-        <textarea
-          onKeyUp={async (e) => {
-            if (e.key === "Enter") {
-              let v = e.target.value.trim();
-              e.target.value = "";
-              await submit(v);
-            }
-          }}
-          className="w-full outline-none resize-none"
-          name="newmsg"
-          id="new-msg"
-          placeholder="write a message"
-        ></textarea>
-      </div>
-      <div className="min-w-[200px] max-w-[50vw]">
-        <ul>
-          {responses.map((r, i) => {
-            return (
-              <li key={i} className="p-2">
-                {r}
-              </li>
-            );
-          })}
-        </ul>
+    <div className="p-2">
+      <textarea
+        onKeyUp={async (e) => {
+          if (e.key === "Enter") {
+            let v = e.target.value.trim();
+            e.target.value = "";
+            await submit(v);
+          }
+        }}
+        className="w-full outline-none resize-none p-1 border border-gray rounded-md"
+        name="newmsg"
+        id="new-msg"
+        placeholder="write a message"
+      ></textarea>
+      <div className="flex w-full">
+        <div className="h-full flex-grow">
+          <ul>
+            {sentMessages.map((m: string, i: number) => {
+              return (
+                <li
+                  className="bg-gray-100 py-1 px-2 my-1 rounded-md border border-gray-300"
+                  key={i}
+                >
+                  {m}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+        <div className="min-w-[200px] max-w-[50vw]">
+          <ul>
+            {responses.map((r, i) => {
+              return (
+                <li key={i} className="flex py-1 space-x-1 px-2 min-h-[1em]">
+                  {r.contains_pii && (
+                    <span className="bg-red-500 text-white px-2 min-w-[2em] h-[2em] rounded-full">
+                      PII
+                    </span>
+                  )}
+                  {r.inappropriate && (
+                    <span className="bg-pink-950 text-white px-2 min-w-[2em] h-[2em] rounded-full">
+                      Inappropriate
+                    </span>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
       </div>
     </div>
   );

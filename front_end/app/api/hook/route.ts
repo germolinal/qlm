@@ -39,7 +39,6 @@ wss.on("connection", (ws: WebSocket) => {
 export async function POST(req: NextRequest) {
   if (handler) {
     let data = await req.json();
-    console.log("posted back", data);
     handler!.send(data);
     return NextResponse.json({ msg: "posting message" });
   } else {
