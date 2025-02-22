@@ -33,7 +33,7 @@ pub struct ChatRequest {
     pub webhook: Option<String>,
 
     /// The model to call
-    model: String,
+    model: Option<String>,
     /// The history of messages, to keep a chat memory
     pub messages: Vec<Message>,
     /// List of tools in JSON for the model to use, if supported
@@ -60,7 +60,7 @@ pub struct ChatRequest {
 
 impl Ollamable for ChatRequest {
     fn set_model<T: Into<String>>(&mut self, model: T) {
-        self.model = model.into()
+        self.model = Some(model.into())
     }
 
     fn webhook(&self) -> &Option<String> {

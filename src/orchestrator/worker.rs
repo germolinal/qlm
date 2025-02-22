@@ -21,11 +21,16 @@ impl Worker {
         state: SharedState,
         index: usize,
         url: String,
-        req: I,
+        mut req: I,
     ) {
         // Do the work
         let client = reqwest::Client::new();
         let worker_url = format!("{}/{}", url, req.path());
+
+        let guard = state.lock().await;
+        req.set_model(guard.model.clone());
+        drop(guard);
+
         if let Some(hook) = &req.webhook() {
             let res = client.post(&worker_url).json(&req).send().await;
             let r = match res {

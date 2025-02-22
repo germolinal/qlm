@@ -85,8 +85,8 @@ async fn async_handler<I: Ollamable>(
             "a webhook field is required for asynchronous processing".to_string(),
         ));
     }
-    let mut guard = state.lock().await;
     let req: LLMRequest = req.into();
+    let mut guard = state.lock().await;
     guard.enqueue(req).await
 }
 
