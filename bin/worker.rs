@@ -34,12 +34,17 @@ async fn call_ollama<I: Ollamable, O: Serialize + DeserializeOwned>(
             return LLMHandlerResponse::Err((status, e));
         }
     };
-    // let s: String = res.text().await.unwrap();
-    // dbg!(s);
+    
+
     let j: O = res
         .json()
         .await
         .expect("could not serialise Ollama response");
+
+    // let s = res.text().await.unwrap();
+    // dbg!(&s);
+    // let j: O = serde_json::from_str(&s).unwrap();
+
     LLMHandlerResponse::Ok((StatusCode::OK, j))
     // todo!()
 }

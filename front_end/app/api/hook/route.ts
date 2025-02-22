@@ -33,12 +33,14 @@ class ConnectionHandler {
 const wss = new WebSocketServer({ port: 3001 });
 let handler: ConnectionHandler | undefined = undefined;
 wss.on("connection", (ws: WebSocket) => {
+  console.log('connecting')
   handler = new ConnectionHandler(ws);
 });
 
 export async function POST(req: NextRequest) {
   if (handler) {
     let data = await req.json();
+    console.log(data)
     handler!.send(data);
     return NextResponse.json({ msg: "posting message" });
   } else {
