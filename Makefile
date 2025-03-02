@@ -1,8 +1,8 @@
 orchestrator:
-	cargo run --bin orchestrator  -- ./config.json
+	cd src && go run ./send/send.go
 
 worker:
-	cargo run --bin worker
+	cd src && go run ./receive/receive.go
 
 # Admin UI is available in localhost:15672 
 # Auth: user = guest, password = guest
