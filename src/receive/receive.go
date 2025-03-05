@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
-	"encoding/json"
+	"fmt"
+	common "gocheck"
+	"gocheck/ollamable"
 	"log"
 	"time"
 
@@ -18,10 +20,41 @@ func failOnError(err error, msg string) {
 	}
 }
 
-func genGenCallback(req *ollama.GenerateRequest) ollama.GenerateResponseFunc {
-	return func(res ollama.GenerateResponse) error {
-		log.Printf("%s\n", res.Response)
-		return nil
+type Queues struct {
+	chat     <-chan amqp.Delivery
+	generate <-chan amqp.Delivery
+}
+
+func listenQueue(ch *amqp.Channel, name string) <-chan amqp.Delivery {
+	genQueue, err := ch.QueueDeclare(
+		name,  // name
+		false, // durable
+		false, // delete when unused
+		false, // exclusive
+		false, // no-wait
+		nil,   // arguments
+	)
+	failOnError(err, "Failed to declare a queue")
+
+	genMessages, err := ch.Consume(
+		genQueue.Name, // queue
+		"",            // consumer
+		false,         // auto-ack
+		false,         // exclusive
+		false,         // no-local
+		false,         // no-wait
+		nil,           // args
+	)
+	failOnError(err, "Failed to register a consumer")
+
+	return genMessages
+}
+
+func listenMessages(ch *amqp.Channel) Queues {
+
+	return Queues{
+		chat:     listenQueue(ch, common.ChatQueue),
+		generate: listenQueue(ch, common.GenerateQueue),
 	}
 }
 
@@ -31,7 +64,9 @@ func main() {
 		Options to be configured:
 		- model
 	*/
-	generateTimeout := 30 * time.Second
+	timeout := 30 * time.Second
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
 
 	/* END OF PARSE OPTIONS */
 	ollamaClient, err := ollama.ClientFromEnvironment()
@@ -47,53 +82,18 @@ func main() {
 	failOnError(err, "Failed to open a channel")
 	defer ch.Close()
 
-	genQueue, err := ch.QueueDeclare(
-		"hello", // name
-		false,   // durable
-		false,   // delete when unused
-		false,   // exclusive
-		false,   // no-wait
-		nil,     // arguments
-	)
-	failOnError(err, "Failed to declare a queue")
-
-	genMessages, err := ch.Consume(
-		genQueue.Name, // queue
-		"",            // consumer
-		false,         // auto-ack
-		false,         // exclusive
-		false,         // no-local
-		false,         // no-wait
-		nil,           // args
-	)
-	failOnError(err, "Failed to register a consumer")
+	messages := listenMessages(ch)
 
 	var forever chan struct{}
 
 	go func() {
-
-		// Process Generate
-		for d := range genMessages {
-			var req ollama.GenerateRequest
-			err := json.Unmarshal(d.Body, &req)
-			if err != nil {
-				// todo: This was a bad request... will not be fixed by retries.
-				log.Fatal("bad request in Generate: ", string(d.Body))
-			}
-
-			// Default values
-			stream := false
-			req.Stream = &stream
-			ctx, _ := context.WithTimeout(context.Background(), generateTimeout)
-			err = ollamaClient.Generate(ctx, &req, genGenCallback(&req))
-			if err != nil {
-				// TODO: Generation failed... this might be fixed by retrying
-				log.Fatal("ollama failed: ", string(d.Body))
-				d.Nack(false, true)
-			}
-			log.Printf("Received a message: %s", d.Body)
-			d.Ack(false)
-
+		for d := range messages.generate {
+			fmt.Println("gen message")
+			ollamable.ProcessMsg(ctx, *&ollamaClient, common.GenerateQueue, d)
+		}
+		for d := range messages.chat {
+			fmt.Println("chat message")
+			ollamable.ProcessMsg(ctx, *&ollamaClient, common.ChatQueue, d)
 		}
 	}()
 
