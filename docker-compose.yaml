@@ -1,0 +1,31 @@
+version: '3.9'
+services:
+  orchestrator:
+    build:
+      context: ./src
+      dockerfile: Dockerfile.orchestrator
+    command: go run ./send/send.go
+    ports: 
+      - "8080:8080"
+    depends_on:
+      rabbit:
+        condition: service_healthy
+  worker:
+    build:
+      context: ./src
+      dockerfile: Dockerfile.worker
+    command: go run ./receive/receive.go
+    depends_on:
+      rabbit:
+        condition: service_healthy
+        
+  rabbit:
+    image: rabbitmq:4.1-rc-management-alpine
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3

@@ -14,12 +14,6 @@ import (
 
 var ollamaClient ollama.Client
 
-func failOnError(err error, msg string) {
-	if err != nil {
-		log.Panicf("%s: %s", msg, err)
-	}
-}
-
 type Queues struct {
 	chat     <-chan amqp.Delivery
 	generate <-chan amqp.Delivery
@@ -34,7 +28,7 @@ func listenQueue(ch *amqp.Channel, name string) <-chan amqp.Delivery {
 		false, // no-wait
 		nil,   // arguments
 	)
-	failOnError(err, "Failed to declare a queue")
+	common.FailOnError(err, "Failed to declare a queue")
 
 	genMessages, err := ch.Consume(
 		genQueue.Name, // queue
@@ -45,7 +39,7 @@ func listenQueue(ch *amqp.Channel, name string) <-chan amqp.Delivery {
 		false,         // no-wait
 		nil,           // args
 	)
-	failOnError(err, "Failed to register a consumer")
+	common.FailOnError(err, "Failed to register a consumer")
 
 	return genMessages
 }
@@ -74,12 +68,12 @@ func main() {
 		log.Fatal("Could not initialise ollama client")
 	}
 
-	conn, err := amqp.Dial("amqp://guest:guest@localhost:5672/")
-	failOnError(err, "Failed to connect to RabbitMQ")
-	defer conn.Close()
+	connection := common.DialRabbit()
+	defer connection.Close()
+	defer connection.Close()
 
-	ch, err := conn.Channel()
-	failOnError(err, "Failed to open a channel")
+	ch, err := connection.Channel()
+	common.FailOnError(err, "Failed to open a channel")
 	defer ch.Close()
 
 	messages := listenMessages(ch)

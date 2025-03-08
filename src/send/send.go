@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	common "gocheck"
 	"gocheck/ollamable"
-	"log"
 	"net/http"
 	"time"
 
@@ -13,36 +12,10 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
-func failOnError(err error, msg string) {
-	if err != nil {
-		log.Panicf("%s: %s", msg, err)
-	}
-}
-
 type Queues struct {
 	chat     amqp.Queue
 	generate amqp.Queue
 }
-
-// func queue(ch *amqp.Channel, name string) amqp.Queue {
-// 	q, err := ch.QueueDeclare(
-// 		name,  // name
-// 		false, // durable
-// 		false, // delete when unused
-// 		false, // exclusive
-// 		false, // no-wait
-// 		nil,   // arguments
-// 	)
-// 	failOnError(err, "Failed to declare a queue")
-// 	return q
-// }
-
-// func queues(ch *amqp.Channel) Queues {
-// 	return Queues{
-// 		chat:     queue(ch, common.ChatQueue),
-// 		generate: queue(ch, common.GenerateQueue),
-// 	}
-// }
 
 func publishRequest(ctx context.Context, ch *amqp.Channel, queueName string, body []byte) {
 	err := ch.PublishWithContext(ctx,
@@ -54,7 +27,7 @@ func publishRequest(ctx context.Context, ch *amqp.Channel, queueName string, bod
 			ContentType: "text/plain",
 			Body:        body,
 		})
-	failOnError(err, "Failed to publish a message")
+	common.FailOnError(err, "Failed to publish a message")
 }
 
 func main() {
@@ -63,12 +36,11 @@ func main() {
 	defer cancel()
 
 	// Connect to Rabbit MQ
-	connection, err := amqp.Dial("amqp://guest:guest@localhost:5672/")
-	failOnError(err, "Failed to connect to RabbitMQ")
+	connection := common.DialRabbit()
 	defer connection.Close()
 
 	ch, err := connection.Channel()
-	failOnError(err, "Failed to open a channel")
+	common.FailOnError(err, "Failed to open a channel")
 	defer ch.Close()
 
 	r := gin.Default()
@@ -85,7 +57,7 @@ func main() {
 			return
 		}
 		body, err := json.Marshal(req)
-		failOnError(err, "error marshalling chat request?")
+		common.FailOnError(err, "error marshalling chat request?")
 		publishRequest(ctx, ch, common.ChatQueue, body)
 
 	})
@@ -97,7 +69,7 @@ func main() {
 			return
 		}
 		body, err := json.Marshal(req)
-		failOnError(err, "error marshalling chat request?")
+		common.FailOnError(err, "error marshalling chat request?")
 		publishRequest(ctx, ch, common.GenerateQueue, body)
 
 	})
