@@ -9,8 +9,8 @@ export default function Home () {
   const ws = useRef<WebSocket | undefined>(undefined)
 
   useEffect(() => {
-    ws.current = new WebSocket('ws://localhost:3001') 
-
+    ws.current = new WebSocket('ws://localhost:3001/socket')
+    
     ws.current.onopen = () => {
       console.log('WebSocket connection opened')
     }
@@ -50,14 +50,14 @@ export default function Home () {
   }, [])
 
   const submit = async (v: string) => {
-    if (v.trim().length===0){
+    if (v.trim().length === 0) {
       return
     }
     setSentMessages(old => [...old, v])
-    let ret = await fetch('api/msg', {
+    let ret = await fetch('/api/msg', {
       method: 'POST',
       body: JSON.stringify({
-        webhook: 'http://localhost:3000/api/hook',
+        webhook: 'http://localhost:3001/webhook',
         prompt: v,
 
         format: {

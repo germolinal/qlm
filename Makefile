@@ -1,14 +1,20 @@
+RABBIT_PORT=5672
+RABBIT_URL=RABBIT_URL=localhost:$(RABBIT_PORT)
+RABBIT_USERNAME=RABBIT_USERNAME=guest
+RABBIT_PASSWORD=RABBIT_PASSWORD=guest
+ENV=$(RABBIT_URL) $(RABBIT_PASSWORD) $(RABBIT_USERNAME)
+
 orchestrator:
-	cd src && go run ./send/send.go
+	cd src && $(ENV) go run ./send/send.go
 
 worker:
-	cd src && go run ./receive/receive.go
+	cd src && $(ENV) go run ./receive/receive.go
 
 rabbit:	
-	docker run -it --rm  -p 5672:5672 -p 15672:15672 rabbitmq:4.1-rc-management-alpine
-
 # Admin UI is available in localhost:15672 
 # Auth: user = guest, password = guest
+	docker run -it --rm  -p $(RABBIT_PORT):$(RABBIT_PORT) -p 15672:15672 rabbitmq:4.1-rc-management-alpine
+
 
 # Install colima by doing:
 # brew install colima

@@ -1,11 +1,14 @@
 package ollamable
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	common "gocheck"
 	"log"
+	"net/http"
+	"time"
 
 	ollama "github.com/ollama/ollama/api"
 	amqp "github.com/rabbitmq/amqp091-go"
@@ -19,7 +22,7 @@ type Ollamable interface {
 
 type LLMChatRequest struct {
 	ollama.ChatRequest
-	Hook string `json:"hook"`
+	Hook string `json:"webhook"`
 }
 
 func (c *LLMChatRequest) SetModel(m string) {
@@ -35,7 +38,7 @@ func (c *LLMChatRequest) GetHook() string {
 
 type LLMGenerateRequest struct {
 	ollama.GenerateRequest
-	Hook string `json:"hook"`
+	Hook string `json:"webhook"`
 }
 
 func (c *LLMGenerateRequest) SetModel(m string) {
@@ -50,8 +53,42 @@ func (c *LLMGenerateRequest) GetHook() string {
 }
 
 func hook(url string, msg []byte) error {
-	log.Printf("%s\n", string(msg))
-	return nil
+	log.Printf("Attempting to POST message to URL: %s\nMessage: %s\n", url, string(msg))
+
+	// 1. Create an HTTP client (you can reuse a client for better performance if calling hook frequently)
+	client := &http.Client{
+		Timeout: time.Second * 10, // Set a timeout for the request (e.g., 10 seconds)
+	}
+
+	// 2. Construct the POST request
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(msg))
+	if err != nil {
+		log.Printf("Error creating POST request: %v", err)
+		return err // Return the error to the caller
+	}
+
+	// Set Content-Type header to application/json (assuming your webhook expects JSON)
+	req.Header.Set("Content-Type", "application/json")
+
+	// 3. Execute the POST request
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Printf("Error executing POST request: %v", err)
+		return err // Return the error to the caller
+	}
+	defer resp.Body.Close() // Ensure response body is closed after function returns
+
+	// 4. Handle response and check for errors
+	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+		log.Printf("Successfully POSTed message to URL: %s, Status Code: %d\n", url, resp.StatusCode)
+		return nil // Success, return nil error
+	} else {
+		log.Printf("POST request to URL: %s failed with Status Code: %d\n", url, resp.StatusCode)
+		// Optionally, you could read the response body here to log error details from the webhook receiver
+		// bodyBytes, _ := io.ReadAll(resp.Body)
+		// log.Printf("Response Body: %s\n", string(bodyBytes))
+		return fmt.Errorf("POST request failed with status code: %d", resp.StatusCode) // Return error for non-successful status codes
+	}
 }
 
 func ProcessMsg(ctx context.Context, ollamaClient *ollama.Client, queueName string, d amqp.Delivery) {

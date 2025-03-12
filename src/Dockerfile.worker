@@ -1,20 +1,27 @@
-# Use a Go base image
-FROM golang:1.24.1-alpine
+FROM ubuntu:latest
+RUN apt-get update 
 
-# Set the working directory inside the container
+# Supervisor
+RUN apt-get install supervisor golang-go -y
+
+# Go
+# RUN rm -rf /usr/local/go && tar -C /usr/local -xzf go1.24.1.linux-amd64.tar.gz
+
+
+# Ollama
+RUN curl -fsSL https://ollama.com/install.sh | sh
+
+# Worker layer
+
 WORKDIR /app
-
-# Copy go.mod and go.sum to cache dependencies
 COPY go.mod go.sum ./
-
-# Download all dependencies. Caching will improve build times.
 RUN go mod download
-
-# Copy the source from the current directory to the working directory inside the container
 COPY . .
-
-# Build the Go application
 RUN go build -o worker ./receive/receive.go
 
-# Command to run when the container starts
-CMD ["./worker"]
+
+# Supervisord configuration
+COPY worker.supervisor.toml /etc/supervisor/conf.d/supervisord.conf
+
+# Run supervisord
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]

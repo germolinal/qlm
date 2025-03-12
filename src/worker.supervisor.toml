@@ -1,0 +1,8 @@
+[supervisord]
+nodaemon=false
+
+[program:ollama]
+command=ollama serve
+
+[program:worker]
+command=/app/worker

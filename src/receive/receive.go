@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	common "gocheck"
 	"gocheck/ollamable"
 	"log"
@@ -45,7 +44,6 @@ func listenQueue(ch *amqp.Channel, name string) <-chan amqp.Delivery {
 }
 
 func listenMessages(ch *amqp.Channel) Queues {
-
 	return Queues{
 		chat:     listenQueue(ch, common.ChatQueue),
 		generate: listenQueue(ch, common.GenerateQueue),
@@ -54,10 +52,6 @@ func listenMessages(ch *amqp.Channel) Queues {
 
 func main() {
 
-	/*
-		Options to be configured:
-		- model
-	*/
 	timeout := 30 * time.Second
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
@@ -70,7 +64,6 @@ func main() {
 
 	connection := common.DialRabbit()
 	defer connection.Close()
-	defer connection.Close()
 
 	ch, err := connection.Channel()
 	common.FailOnError(err, "Failed to open a channel")
@@ -82,11 +75,9 @@ func main() {
 
 	go func() {
 		for d := range messages.generate {
-			fmt.Println("gen message")
 			ollamable.ProcessMsg(ctx, *&ollamaClient, common.GenerateQueue, d)
 		}
 		for d := range messages.chat {
-			fmt.Println("chat message")
 			ollamable.ProcessMsg(ctx, *&ollamaClient, common.ChatQueue, d)
 		}
 	}()
