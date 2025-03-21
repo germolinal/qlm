@@ -3,9 +3,9 @@ package main
 import (
 	"context"
 	"encoding/json"
-	common "gocheck"
-	"gocheck/ollamable"
 	"net/http"
+	common "qml/core"
+	"qml/core/ollamable"
 	"time"
 
 	"github.com/gin-gonic/gin"

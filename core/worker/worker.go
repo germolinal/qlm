@@ -2,9 +2,9 @@ package main
 
 import (
 	"context"
-	common "gocheck"
-	"gocheck/ollamable"
 	"log"
+	common "qml/core"
+	"qml/core/ollamable"
 	"time"
 
 	ollama "github.com/ollama/ollama/api"

@@ -5,10 +5,13 @@ RABBIT_PASSWORD=RABBIT_PASSWORD=guest
 ENV=$(RABBIT_URL) $(RABBIT_PASSWORD) $(RABBIT_USERNAME)
 
 orchestrator:
-	cd src && $(ENV) go run ./send/send.go
+	cd core && $(ENV) go run ./orchestrator/orchestrator.go
 
 worker:
-	cd src && $(ENV) go run ./receive/receive.go
+	cd core && $(ENV) go run ./worker/worker.go
+
+playground: FORCE
+	cd playground && $(ENV) go run ./playground.go
 
 rabbit:	
 # Admin UI is available in localhost:15672 
@@ -23,3 +26,5 @@ docker_daemon:
 
 up:
 	docker-compose build && docker-compose up
+
+FORCE: ;

@@ -5,9 +5,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	common "gocheck"
 	"log"
 	"net/http"
+	common "qml/core"
 	"time"
 
 	ollama "github.com/ollama/ollama/api"
@@ -18,11 +18,13 @@ type Ollamable interface {
 	SetModel(string)
 	SetStream(*bool)
 	GetHook() string
+	GetId() string
 }
 
 type LLMChatRequest struct {
 	ollama.ChatRequest
 	Hook string `json:"webhook"`
+	Id   string `json:"id"`
 }
 
 func (c *LLMChatRequest) SetModel(m string) {
@@ -35,10 +37,14 @@ func (c *LLMChatRequest) SetStream(m *bool) {
 func (c *LLMChatRequest) GetHook() string {
 	return c.Hook
 }
+func (c *LLMChatRequest) GetId() string {
+	return c.Id
+}
 
 type LLMGenerateRequest struct {
 	ollama.GenerateRequest
 	Hook string `json:"webhook"`
+	Id   string `json:"id"`
 }
 
 func (c *LLMGenerateRequest) SetModel(m string) {
@@ -51,9 +57,24 @@ func (c *LLMGenerateRequest) SetStream(m *bool) {
 func (c *LLMGenerateRequest) GetHook() string {
 	return c.Hook
 }
+func (c *LLMGenerateRequest) GetId() string {
+	return c.Id
+}
 
-func hook(url string, msg []byte) error {
-	log.Printf("Attempting to POST message to URL: %s\nMessage: %s\n", url, string(msg))
+func hook(url string, id string, msg []byte) error {
+
+	// 0. Inject ID:
+	var data map[string]interface{}
+	err := json.Unmarshal(msg, &data)
+	if err != nil {
+		return err
+	}
+	data["id"] = id
+	modifiedMsg, err := json.Marshal(data)
+	if err != nil {
+		return fmt.Errorf("failed to marshal modified JSON: %w", err)
+	}
+	msg = modifiedMsg
 
 	// 1. Create an HTTP client (you can reuse a client for better performance if calling hook frequently)
 	client := &http.Client{
@@ -80,8 +101,7 @@ func hook(url string, msg []byte) error {
 
 	// 4. Handle response and check for errors
 	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
-		log.Printf("Successfully POSTed message to URL: %s, Status Code: %d\n", url, resp.StatusCode)
-		return nil // Success, return nil error
+		return nil
 	} else {
 		log.Printf("POST request to URL: %s failed with Status Code: %d\n", url, resp.StatusCode)
 		// Optionally, you could read the response body here to log error details from the webhook receiver
@@ -92,8 +112,7 @@ func hook(url string, msg []byte) error {
 }
 
 func ProcessMsg(ctx context.Context, ollamaClient *ollama.Client, queueName string, d amqp.Delivery) {
-	fmt.Println("received!")
-	var req interface{} // Use interface{} to handle different request types
+	var req interface{}
 
 	switch queueName {
 	case common.GenerateQueue:
@@ -125,6 +144,7 @@ func ProcessMsg(ctx context.Context, ollamaClient *ollama.Client, queueName stri
 	}
 
 	hookUrl := req.(Ollamable).GetHook()
+	id := req.(Ollamable).GetId()
 	switch r := req.(type) {
 	case *LLMGenerateRequest:
 		err = ollamaClient.Generate(ctx, &r.GenerateRequest, func(res ollama.GenerateResponse) error {
@@ -132,7 +152,7 @@ func ProcessMsg(ctx context.Context, ollamaClient *ollama.Client, queueName stri
 			if err != nil {
 				return err
 			}
-			return hook(hookUrl, s)
+			return hook(hookUrl, id, s)
 		})
 		if err != nil {
 			log.Printf("ollama generate failed: %v", err)
@@ -145,7 +165,7 @@ func ProcessMsg(ctx context.Context, ollamaClient *ollama.Client, queueName stri
 			if err != nil {
 				return err
 			}
-			return hook(hookUrl, s)
+			return hook(hookUrl, id, s)
 		})
 		if err != nil {
 			log.Printf("ollama chat failed: %v", err)
@@ -158,6 +178,5 @@ func ProcessMsg(ctx context.Context, ollamaClient *ollama.Client, queueName stri
 		return
 	}
 
-	log.Printf("Received a message: %s", d.Body)
 	d.Ack(false)
 }

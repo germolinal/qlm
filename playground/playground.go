@@ -12,7 +12,9 @@ import (
 
 var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool {
-		return true // Allow connections from any origin (for development - IMPORTANT: adjust for production)
+		// Allow connections from any origin
+		// (This is a playground... adjust for production)
+		return true
 	},
 }
 
@@ -21,11 +23,11 @@ type Client struct {
 	conn *websocket.Conn
 }
 
-// Global map to store connected clients (using a map for easy removal and concurrency safety)
 var clients = make(map[*Client]bool)
-var clientsMutex sync.Mutex // Mutex to protect concurrent access to clients map
 
-// broadcastMessage sends a message to all connected clients.
+// Mutex to protect concurrent access to clients map
+var clientsMutex sync.Mutex
+
 func broadcastMessage(message interface{}) {
 	clientsMutex.Lock()
 	defer clientsMutex.Unlock()
@@ -57,7 +59,8 @@ func handleConnections(w http.ResponseWriter, r *http.Request) {
 	log.Println("Client connected")
 
 	for {
-		_, _, err := conn.ReadMessage() // Keep connection alive, but we are server-push only in this example
+		// Keep connection alive
+		_, _, err := conn.ReadMessage()
 		if err != nil {
 			clientsMutex.Lock()
 			delete(clients, client)
@@ -65,18 +68,7 @@ func handleConnections(w http.ResponseWriter, r *http.Request) {
 			log.Println("Client disconnected")
 			break
 		}
-		// We are not expecting messages from the client in this example, but you could handle them here if needed.
-		// For example, you could echo back or process client messages.
-		// messageType, p, err := conn.ReadMessage()
-		// if err != nil {
-		// 	log.Printf("error reading message: %v", err)
-		// 	break
-		// }
-		// log.Printf("Received message: %s", p)
-		// if err := conn.WriteMessage(messageType, p); err != nil {
-		// 	log.Printf("error writing message: %v", err)
-		// 	break
-		// }
+
 	}
 }
 
@@ -103,6 +95,7 @@ func handleWebhook(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+
 	clients = make(map[*Client]bool) // Initialize the clients map
 
 	http.HandleFunc("/socket", handleConnections)
