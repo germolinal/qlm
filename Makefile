@@ -11,7 +11,7 @@ worker:
 	cd core && $(ENV) go run ./worker/worker.go
 
 playground: FORCE
-	cd playground && $(ENV) go run ./playground.go
+	cd playground && $(ENV) go run ./playground.go && cd ..
 
 rabbit:	
 # Admin UI is available in localhost:15672 

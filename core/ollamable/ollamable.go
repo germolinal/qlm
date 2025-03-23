@@ -43,6 +43,7 @@ func (c *LLMChatRequest) GetId() string {
 
 type LLMGenerateRequest struct {
 	ollama.GenerateRequest
+
 	Hook string `json:"webhook"`
 	Id   string `json:"id"`
 }
@@ -76,12 +77,12 @@ func hook(url string, id string, msg []byte) error {
 	}
 	msg = modifiedMsg
 
-	// 1. Create an HTTP client (you can reuse a client for better performance if calling hook frequently)
+	// Create an HTTP client
 	client := &http.Client{
-		Timeout: time.Second * 10, // Set a timeout for the request (e.g., 10 seconds)
+		Timeout: time.Second * 10,
 	}
 
-	// 2. Construct the POST request
+	// Construct the POST request
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(msg))
 	if err != nil {
 		log.Printf("Error creating POST request: %v", err)
@@ -91,7 +92,7 @@ func hook(url string, id string, msg []byte) error {
 	// Set Content-Type header to application/json (assuming your webhook expects JSON)
 	req.Header.Set("Content-Type", "application/json")
 
-	// 3. Execute the POST request
+	// send request
 	resp, err := client.Do(req)
 	if err != nil {
 		log.Printf("Error executing POST request: %v", err)
@@ -99,12 +100,11 @@ func hook(url string, id string, msg []byte) error {
 	}
 	defer resp.Body.Close() // Ensure response body is closed after function returns
 
-	// 4. Handle response and check for errors
 	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
 		return nil
 	} else {
 		log.Printf("POST request to URL: %s failed with Status Code: %d\n", url, resp.StatusCode)
-		// Optionally, you could read the response body here to log error details from the webhook receiver
+		// Todo: read the response body here to log error details from the webhook receiver
 		// bodyBytes, _ := io.ReadAll(resp.Body)
 		// log.Printf("Response Body: %s\n", string(bodyBytes))
 		return fmt.Errorf("POST request failed with status code: %d", resp.StatusCode) // Return error for non-successful status codes
@@ -136,7 +136,6 @@ func ProcessMsg(ctx context.Context, ollamaClient *ollama.Client, queueName stri
 	stream := false
 	if ollamaReq, ok := req.(Ollamable); ok {
 		ollamaReq.SetStream(&stream)
-		ollamaReq.SetModel("gemma2")
 	} else {
 		log.Println("request is not OllamaRequest")
 		d.Nack(false, false)

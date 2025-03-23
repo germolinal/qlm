@@ -5,8 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Document</title>
-    <script src="/playground/ui/js/index.js" defer></script>
-    <link rel="stylesheet" href="/playground/ui/css/index.css">
+    <script src="/js/index.js" defer></script>
+    <link rel="stylesheet" href="/css/index.css">
 </head>
 
 <body>
@@ -14,10 +14,28 @@
         <block>QLM</block> playground
     </h1>
     <textarea id="msgwriter" placeholder="write a message"></textarea>
+    <div>
+        <input type="text" name="model" id="model-name" placeholder="model" value="gemma2" />
+    </div>
+    <div>
+        <button id="add-column-button">Add field</button>
+        <input type="text" name="field-name" id="field-name" placeholder="Field name" />
+        <input type="text" name="field-description" id="field-description" placeholder="Field description" />
+        <select id="field-format">
+            <option value="boolean">Boolean</option>
+            <option value="string">String</option>
+            <option value="number">Number</option>
+        </select>
+        <select id="field-required">
+            <option value="required">Required</option>
+            <option value="optional">Optional</option>
+        </select>
+    </div>
     <table id="main-table">
-        <!-- THEAD -->
-        <tbody id="messages-display">
-        </tbody>
+        <thead>
+            <tr id="messages-header"></tr>
+        </thead>
+        <tbody id="messages-display"></tbody>
     </table>
 </body>
 

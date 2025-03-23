@@ -52,7 +52,7 @@ func listenMessages(ch *amqp.Channel) Queues {
 
 func main() {
 
-	timeout := 30 * time.Second
+	timeout := 300 * time.Second // LLMs are not always very fast... do not use a very small value here
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
