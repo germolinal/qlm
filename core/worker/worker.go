@@ -3,8 +3,10 @@ package main
 import (
 	"context"
 	"log"
+	"os"
 	common "qml/core"
 	"qml/core/ollamable"
+	"strconv"
 	"time"
 
 	ollama "github.com/ollama/ollama/api"
@@ -44,19 +46,40 @@ func listenQueue(ch *amqp.Channel, name string) <-chan amqp.Delivery {
 }
 
 func listenMessages(ch *amqp.Channel) Queues {
+
 	return Queues{
 		chat:     listenQueue(ch, common.ChatQueue),
 		generate: listenQueue(ch, common.GenerateQueue),
 	}
 }
 
+func getConcurrency() int {
+	name := "CONCURRENCY"
+	concurrency := os.Getenv(name)
+	if concurrency == "" {
+		ret := 4
+		log.Printf("no value for %s... using %d", name, ret)
+		return ret
+	}
+	ret, err := strconv.Atoi(concurrency)
+	if err != nil {
+		log.Fatalf("value for '%s' is '%s' and cannot be turned into an int\n", name, concurrency)
+	}
+	return ret
+}
+
 func main() {
+
+	// TODO: GATHER FROM OPTIONS
+	// timeoutSeconds := 300
+
+	concurrency := getConcurrency()
+	//
 
 	timeout := 300 * time.Second // LLMs are not always very fast... do not use a very small value here
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	/* END OF PARSE OPTIONS */
 	ollamaClient, err := ollama.ClientFromEnvironment()
 	if err != nil {
 		log.Fatal("Could not initialise ollama client")
@@ -68,6 +91,10 @@ func main() {
 	ch, err := connection.Channel()
 	common.FailOnError(err, "Failed to open a channel")
 	defer ch.Close()
+
+	// Limit concurrency
+	err = ch.Qos(concurrency, 0, false)
+	common.FailOnError(err, "Failed to set QoS")
 
 	messages := listenMessages(ch)
 

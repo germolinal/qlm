@@ -30,3 +30,11 @@ response**. They will come back to you later, when they are processe. To make th
 > **Note:** You need to set up your client to handle these async operations
 > properly; e.g., you send a text message that will receive no answer immediately. On the
 > contrary, it will receive an answer later, sent to the `hook` url you provided.
+
+## FAQ
+
+## TODO
+
+Handle concurrency properly: 
+
+* Ollama - https://github.com/ollama/ollama/blob/main/docs/faq.md#how-does-ollama-handle-concurrent-requests

@@ -8,7 +8,7 @@ orchestrator:
 	cd core && $(ENV) go run ./orchestrator/orchestrator.go
 
 worker:
-	cd core && $(ENV) go run ./worker/worker.go
+	cd core && CONCURRENCY=1 $(ENV) go run ./worker/worker.go
 
 playground: FORCE
 	cd playground && $(ENV) go run ./playground.go && cd ..
@@ -24,7 +24,5 @@ rabbit:
 docker_daemon:
 	colima start
 
-up:
-	docker-compose build && docker-compose up
 
 FORCE: ;
