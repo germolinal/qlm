@@ -1,3 +1,6 @@
+const INFORM_ICON = `<svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 512 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M256 90c44.3 0 86 17.3 117.4 48.6C404.7 170 422 211.7 422 256s-17.3 86-48.6 117.4C342 404.7 300.3 422 256 422s-86-17.3-117.4-48.6C107.3 342 90 300.3 90 256s17.3-86 48.6-117.4C170 107.3 211.7 90 256 90m0-42C141.1 48 48 141.1 48 256s93.1 208 208 208 208-93.1 208-208S370.9 48 256 48z"></path><path d="M277 360h-42V235h42v125zm0-166h-42v-42h42v42z"></path></svg>`
+const WARNING_ICON = `<svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 24 24" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path fill="none" d="M0 0h24v24H0z"></path><path d="M12 5.99 19.53 19H4.47L12 5.99M12 2 1 21h22L12 2z"></path><path d="M13 16h-2v2h2zM13 10h-2v5h2z"></path></svg>`
+
 function getById(name) {
     const v = document.getElementById(name)
     if (!v) {
@@ -6,8 +9,43 @@ function getById(name) {
     return v
 }
 
-function onError(e) {
+
+const toast = getById("toast")
+const toastIcon = getById("toast-icon")
+const toastMsg = getById("toast-msg")
+function showToast(icon, msg) {
+    toast.style.bottom = "1em";
+    const t = typeof msg
+    const aux = msg
+    if (t !== 'string' && t !== 'number') {
+        aux = JSON.stringify(msg)
+    }
+    toastIcon.innerHTML = icon
+    toastMsg.innerHTML = aux
+
+    setTimeout(() => {
+        toast.style.bottom = "-5em";
+    }, 1000)
+}
+
+function log(msg) {
+    const border = 'rgb(71,170,123)'
+    const bg = 'rgb(236,252,244)'
+    toastIcon.style.color = border
+    toast.style.backgroundColor = bg
+    toast.style.borderColor = border;
+    console.log(msg)
+    showToast(INFORM_ICON, msg)
+}
+
+function error(e) {
+    const border = 'rgb(224,120,115)'
+    const bg = 'rgb(252,241,240)'
+    toastIcon.style.color = border
+    toast.style.backgroundColor = bg
+    toast.style.borderColor = border;
     console.error(e)
+    showToast(WARNING_ICON, e)
 }
 
 const messagesDisplay = getById('messages-display')
@@ -19,13 +57,8 @@ const fieldRequired = getById("field-required")
 const fieldDescription = getById("field-description")
 const modelName = getById("model-name")
 
-var format = [{
-    name: "is_spanish",
-    type: "boolean",
-    description: "indicates whether the input was in spanish",
-    required: true
-}]
-// var format = null
+var format = null
+
 
 const messages = [
     {
@@ -45,7 +78,7 @@ const messages = [
 function addFieldToFormat() {
     const newFieldName = fieldName.value.trim()
     if (newFieldName.length === 0) {
-        onError("A field name is required for adding a new field")
+        error("A field name is required for adding a new field")
     }
     const newFieldFormat = fieldFormat.value
     const newFieldDescription = fieldDescription.value
@@ -56,7 +89,7 @@ function addFieldToFormat() {
     }
     const index = format.findIndex(f => f.name === newFieldName);
     if (index !== -1) {
-        onError(`Field named ${newFieldName} already exists`)
+        error(`Field named ${newFieldName} already exists`)
         return
     }
 
@@ -118,13 +151,13 @@ socket.onmessage = function (event) {
                 }
                 reRenderMessages()
             } else {
-                onError(`Message with ID ${payload.id} not found.`);
+                error(`Message with ID ${payload.id} not found.`);
             }
         } else {
-            onError(`Invalid payload received: ${payload}`);
+            error(`Invalid payload received: ${payload}`);
         }
     } catch (error) {
-        onError("Error parsing JSON:" + error);
+        error("Error parsing JSON:" + error);
     }
 };
 
@@ -132,12 +165,12 @@ socket.onclose = function (event) {
     if (event.wasClean) {
         console.log(`Connection closed cleanly, code=${event.code} reason=${event.reason}`);
     } else {
-        onError('Connection died');
+        error('Connection died');
     }
 };
 
 socket.onerror = function (error) {
-    onError("WebSocket error:" + error);
+    error("WebSocket error:" + error);
 };
 
 //////////////////////////
@@ -170,7 +203,7 @@ function appendMsg(m) {
     if (format && format.length > 0) {
         format.forEach((f) => {
             let td = document.createElement('td')
-            if (m.veredict && m.veredict[f.name]) {
+            if (m.veredict !== undefined && m.veredict[f.name] !== undefined) {
                 td.innerText = m.veredict[f.name]
             } else {
                 td.innerHTML = pendingMsg
@@ -181,7 +214,7 @@ function appendMsg(m) {
     } else {
         let td = document.createElement('td')
         if (m.veredict) {
-            td.innerHTML = m.veredict
+            td.innerHTML = JSON.stringify(m.veredict)
         } else {
             td.innerHTML = pendingMsg
         }
@@ -266,7 +299,7 @@ async function submit(msg) {
     }
     let model = modelName.value.trim()
     if (model.length === 0) {
-        onError("A model name should be provided")
+        error("A model name should be provided")
         return
     }
 
@@ -300,7 +333,7 @@ async function submit(msg) {
         }
     })
     if (!ret.ok) {
-        onError(ret)
+        error(ret)
     }
 }
 

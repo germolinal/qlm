@@ -10,6 +10,16 @@ block {
   font-family: 'Courier New', Courier, monospace;
 }
 
+p#toast {
+  position: fixed;
+  padding: 1em;
+  border-radius: 0.4em;
+  bottom: -5em;
+  right: 1em;
+  transition: bottom 0.3s ease-in 0s;
+  border: 1px solid black;
+}
+
 textarea#msgwriter,
 textarea#msgwriter:hover {
   outline: none;
@@ -31,7 +41,7 @@ table {
   color: red;
 }
 thead {
-  color: rgba(0,0,0,0.6);  
+  color: rgba(0, 0, 0, 0.6);
   font-size: 0.8em;
   font-weight: normal;
 }
