@@ -71,12 +71,11 @@ func getConcurrency() int {
 func main() {
 
 	// TODO: GATHER FROM OPTIONS
-	// timeoutSeconds := 300
 
 	concurrency := getConcurrency()
 	//
 
-	timeout := 300 * time.Second // LLMs are not always very fast... do not use a very small value here
+	timeout := 600 * time.Second // LLMs are not always very fast... do not use a very small value here
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
