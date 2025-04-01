@@ -1,4 +1,6 @@
-# QLM (Queue Language Model) - Privacy-Focused On-Premises LLM Processing
+# QLM (Queue Language Model) 
+
+A privacy-focused LLM processing framework
 
 **⚠️ Warning: This project is in very early stages and is not production-ready. Security is a top priority, but has not yet been implemented. (Contributions welcome) ⚠️**
 
