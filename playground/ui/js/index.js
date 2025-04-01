@@ -60,17 +60,7 @@ const modelName = getById("model-name")
 var format = null
 
 
-const messages = [
-    {
-        content: "This is a resolved message",
-        id: '0',
-        veredict: "{ wow_msg: 'Yes, very good' }"
-    },
-    {
-        content: "Pending messsage",
-        id: '1',
-    }
-]
+const messages = []
 
 //////////////////////////
 // SCHEMA HANDLING
@@ -315,19 +305,18 @@ async function submit(msg) {
 
 
 
-    // Shape the message
-    let m = {
+    // Shape the message    
+    let body = JSON.stringify({
         model,
         prompt: msg,
         id,
         webhook: protocol + '//' + window.location.host + '/webhook',
         format: structuredOutput(),
-    }
-
+    });
     // queue message
     const ret = await fetch("/msg", {
         method: "POST",
-        body: JSON.stringify(m),
+        body,
         headers: {
             'Content-Type': 'application/json'
         }
