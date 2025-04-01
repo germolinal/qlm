@@ -1,40 +1,130 @@
-# Queues for Language Models (QLM)
+# QLM (Queue Language Model) - Privacy-Focused On-Premises LLM Processing
 
-This project aims to provide a robust interface for running Language Models
-on-premises. Obviously, some LLMs are too large to run on local machines
-(which is why I dropped the first L, which stands for Large) which means that
-their capacity to run complex tasks is limited. Nevertheless, Small Language
-Models have become quite capable, and they are now—I think—ready to perform
-tasks such as:
+**⚠️ Warning: This project is in very early stages and is not production-ready. Security is a top priority, but has not yet been implemented. (Contributions welcome) ⚠️**
 
-1. Performing basic proof-reading and rephrasing of text
-2. Checking emails for tone/sensitive information before going out
-3. Checking emails for malicious links before comming in
-4. Checking whether messages sent to cloud-based Large Language Models contain data that might be better NOT to share.
+`QLM` is an open-source project designed to enable privacy-sensitive tasks using small Language Models (or just LMs) on your own infrastructure. We leverage RabbitMQ for asynchronous task queuing and Ollama for running LMs. This allows you to process data without sending it to external cloud services, ensuring maximum privacy and control.
 
-## Tech stack
+## The Need for Privacy
 
-We use [RabbitMQ](https://www.rabbitmq.com) as a queueing system and [Ollama](https://ollama.com)
-as the Local LLM runner. What we do in the middle is to create the queue and orchestrate the
-distribution of messages between them.
+In today's data-driven world, many tasks require the power of language models but involve sensitive information. Sending this data to third-party cloud services raises significant privacy concerns. QLM addresses this by providing a secure, on-premises solution.
 
-## API
+## Example Use Cases
 
-We simply leverage the preexistent `Ollama` API, so any call you were intending to make to
-it, you can make to `QLM`. The only difference is that **you should not expect an immediate
-response**. They will come back to you later, when they are processe. To make this happen, `QLM` asks for two extra params in any Ollama-ish request:
+* **Email Analysis:**
+    * Check outgoing emails for tone, appropriateness, and potential information leaks.
+    * Scan incoming emails for suspicious links or phishing attempts.
+* **Code Review:**
+    * Analyze code before committing to Git for potential security vulnerabilities (e.g., exposed API keys).
+    * Generate documentation from the code.
+* **Data Sanitization:**
+    * Replicate databases with anonymized data for development and testing.
+    * Redact PII from documents.
+* **Document Summarization:**
+    * Summarize long legal documents or reports.
 
-1.  a `webhook` parameter, indicating where the result should be posted after it is processed.
-2.  an `id`, which is not used by `QLM`, but it will be useful for you to know which responses correspond to which messages
+## Key Features
 
-> **Note:** You need to set up your client to handle these async operations
-> properly; e.g., you send a text message that will receive no answer immediately. On the
-> contrary, it will receive an answer later, sent to the `hook` url you provided.
+* **Privacy-First:** Process sensitive data on your own infrastructure.
+* **Asynchronous Processing:** Handle batch processing efficiently.
+* **Ollama Integration:** Leverage the power of Ollama and its growing ecosystem of on-premises LMs.
+* **RabbitMQ Queues:** Reliable and scalable task queuing.
+* **Simple API:** Use the same request format as Ollama, with added `webhook` and `id` fields.
+
+
+## Architecture
+
+1.  **API Endpoints servers** receive requests in the exact same format as the very mature Ollama's API, just adding a `webhook` URL and an `id`.
+2.  API endpoint serves qnqueue incoming requests into **RabbitMQ Queues** 
+3.  **Worker VMs** listen to the RabbitMQ queues, fetching requests and forwarding them to Ollama.
+4.  Once **Ollama** is done processing the requests, the workers will `POST` the response to the provided `webhook` URL, including the original `id`.
+
+
+## Getting Started
+
+For now, read the `Makefile` and you will get a clear idea. 
+
+> You will need Docker to run Rabbit.
+
+You need to run:
+* `make rabbit`
+* `make orchestrator`
+* `make worker`
+* OPTIONAL: `make playground` (available at `http://localhost:3000`).
+
+## Example 
+
+If you sent this in the request:
+
+```json
+{
+  "model": "gemma3",
+  "prompt": "Translate this into english: Mi nombre es Rodrigo, y me gusta mucho el lenguaje",
+  "webhook": "https://your-webhook-url.com/receive",
+  "id": "12345"
+}
+```
+
+Your webook will receive something like this:
+
+```json
+{  
+  "created_at": "2025-04-01T08:18:34.61715Z",
+  "done": true,
+  "done_reason": "stop",
+  "eval_count": 30,
+  "eval_duration": 1194330583,
+  "id": "12345",
+  "load_duration": 58733583,
+  "model": "gemma3",
+  "prompt_eval_count": 25,
+  "prompt_eval_duration": 799852875,
+  "response": "My name is Rodrigo, and I really like language.  \n\n\nLet me know if you have any other phrases you'd like translated! 😊",
+  "total_duration": 2053661125
+}
+```
+> **Note**: you can ask for structured output
 
 ## FAQ
 
-## TODO
+**Is `QLM` production-ready?**
 
-Handle concurrency properly: 
+No, `QLM` is in very early stages and is not production-ready. Security is a major concern that has not yet been addressed.
 
-* Ollama - https://github.com/ollama/ollama/blob/main/docs/faq.md#how-does-ollama-handle-concurrent-requests
+**What are the security considerations?**
+
+Currently, there are no security measures in place. This is a top priority for future development.
+
+**How does `QLM` handle scalability?**
+
+`QLM` is designed for on-premises use and relies on RabbitMQ for asynchronous processing. Scalability can be improved by increasing worker concurrency or using a Kubernetes cluster. (We would be very happy if you helped us streamline and document how to deploy `QML` in an on-premises Kubernetes cluster)
+
+**Can I use different language models?**
+
+Yes, `QLM` leverages Ollama, which supports a wide range of language models.
+
+**How do I handle errors?**
+
+RabbitMQ handles unacknowledged messages. Webhook error handling is still under development.
+
+**Can I contribute to `QLM`?**
+
+Absolutely! We welcome contributions. Please submit pull requests or open issues on GitHub.
+
+## Future Development
+* **Security**: Implement robust security measures, including authentication, authorization, and encryption.
+* **Error Handling**: Improve error handling and retry mechanisms, especially for webhook deliveries.
+* **Resource Management**: Add dynamic worker scaling and resource monitoring.
+* **Customization**: Provide hooks or plugins for custom pre- and post-processing.
+Monitoring and Logging: Add comprehensive monitoring and logging capabilities.
+* **Testing**: Implement thorough unit and integration tests.
+* **Documentation**: Improve documentation and provide more examples.
+* **Support for other LLM servers**: Explore supporting other LLM serving frameworks.
+
+## Contributing
+
+We welcome contributions! Please feel free to submit pull requests or open issues on GitHub.
+
+## License
+[MIT License]
+
+Disclaimer: This project is in its early stages and is provided "as is" without any warranty. Use at your own risk.

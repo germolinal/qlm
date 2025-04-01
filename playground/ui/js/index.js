@@ -130,6 +130,7 @@ socket.onopen = function (event) {
 socket.onmessage = function (event) {
     try {
         const payload = JSON.parse(event.data);
+        console.log(JSON.stringify(payload, null, 2))
         if (payload && payload.id && payload.response) {
             // Find the message with the matching ID
             const messageIndex = messages.findIndex((msg) => msg.id === payload.id);

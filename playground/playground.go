@@ -27,13 +27,11 @@ type Client struct {
 var client Client
 
 func sendMsgToUI(message interface{}) {
-
 	err := client.conn.WriteJSON(message)
 	if err != nil {
 		log.Printf("error sending message to client: %v", err)
 		client.conn.Close()
 	}
-
 }
 
 // handleConnections upgrades HTTP connection to WebSocket and manages clients.
