@@ -13,7 +13,7 @@ const ChatQueue string = "chat"
 
 func FailOnError(err error, msg string) {
 	if err != nil {
-		log.Panicf("%s: %s", msg, err)
+		log.Panicf("%s: %s", msg, err.Error())
 	}
 }
 
@@ -27,9 +27,10 @@ func EnvOrFail(name string) string {
 
 func rabbitUrl() string {
 	url := EnvOrFail("RABBIT_URL")
+	port := EnvOrFail("RABBIT_PORT")
 	username := EnvOrFail("RABBIT_USERNAME")
 	password := EnvOrFail("RABBIT_PASSWORD")
-	return fmt.Sprintf("amqp://%s:%s@%s/", username, password, url)
+	return fmt.Sprintf("amqp://%s:%s@%s:%s/", username, password, url, port)
 }
 
 func DialRabbit() *amqp.Connection {
