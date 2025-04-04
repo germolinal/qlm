@@ -1,14 +1,17 @@
 # QLM (Queue Language Model) 
 
-A privacy-focused LLM processing framework
+A privacy-focused and async LLM processing framework
 
 **⚠️ Warning: This project is in very early stages and is not production-ready. Security is a top priority, but has not yet been implemented. (Contributions welcome) ⚠️**
 
-`QLM` is an open-source project designed to enable privacy-sensitive tasks using small Language Models (or just LMs) on your own infrastructure. We leverage RabbitMQ for asynchronous task queuing and Ollama for running LMs. This allows you to process data without sending it to external cloud services, ensuring maximum privacy and control.
+`QLM` is an open-source project designed to enable privacy-sensitive tasks using small Language Models (or just LMs) on your own infrastructure. We leverage **RabbitMQ** for asynchronous task queuing and **Ollama** for running LMs. This allows you to process data without sending it to external cloud services, ensuring maximum privacy and control.
 
 ## The Need for Privacy
 
-In today's data-driven world, many tasks require the power of language models but involve sensitive information. Sending this data to third-party cloud services raises significant privacy concerns. QLM addresses this by providing a secure, on-premises solution.
+Wouldn't it be great to be able to use Language Models for tasks that are deeply personal 
+or sensitive to you? Like, with your company's or your own data? I think it would, 
+but of course this can be unwise in many situations. `QLM` aims to fix this: we believe 
+that relatively small language models can do a lot!
 
 ## Example Use Cases
 
@@ -26,8 +29,8 @@ In today's data-driven world, many tasks require the power of language models bu
 
 ## Key Features
 
-* **Privacy-First:** Process sensitive data on your own infrastructure.
-* **Asynchronous Processing:** Handle batch processing efficiently.
+* **Fully private:** Process everythong on your own infrastructure.
+* **Asynchronous Processing:** Your infrastructure does not scale as much as the cloud, making queues a crucial element of this solution.
 * **Ollama Integration:** Leverage the power of Ollama and its growing ecosystem of on-premises LMs.
 * **RabbitMQ Queues:** Reliable and scalable task queuing.
 * **Simple API:** Use the same request format as Ollama, with added `webhook` and `id` fields.
@@ -35,7 +38,7 @@ In today's data-driven world, many tasks require the power of language models bu
 
 ## Architecture
 
-1.  **API Endpoints servers** receive requests in the exact same format as the very mature Ollama's API, just adding a `webhook` URL and an `id`.
+1.  **API Endpoints servers** (i.e., `orchestrators`) receive requests in the exact same format as the very mature Ollama's API, just adding a `webhook` URL and an `id`.
 2.  API endpoint serves qnqueue incoming requests into **RabbitMQ Queues** 
 3.  **Worker VMs** listen to the RabbitMQ queues, fetching requests and forwarding them to Ollama.
 4.  Once **Ollama** is done processing the requests, the workers will `POST` the response to the provided `webhook` URL, including the original `id`.
@@ -43,15 +46,16 @@ In today's data-driven world, many tasks require the power of language models bu
 
 ## Getting Started
 
-For now, read the `Makefile` and you will get a clear idea. 
+1. Install `Docker` (or `Podman` I guess), `Make`, and `Go`.
+2. (Optionally,) have a look at the `Makefile`, as it might give you an idea of what is going on.
+3. Run the components using the following commands (in different terminals):
+    * `make rabbit` will start the queue that the orchestrator and the worker need to listen to. This needs to be running for the rest to work.
+    * `make orchestrator` will run the orchestrator **without Docker** (there are also commands to build and run the container in the `Makefile`)
+    * `make worker` runs the worker with no container (I am still thinking about how to pack this and Ollama together better.)
+    * **[Install and run Ollama](https://github.com/ollama/ollama)** using `ollama serve` or the desktop application. The worker will make requests to it. Make sure the `model` you use in the requests to the orchestrators (e.g., `gemma3`) is downloaded and loaded into Ollama. 
+    * OPTIONAL: `make playground` (available at `http://localhost:3000`).
 
-> You will need Docker to run Rabbit.
-
-You need to run:
-* `make rabbit`
-* `make orchestrator`
-* `make worker`
-* OPTIONAL: `make playground` (available at `http://localhost:3000`).
+> Ollama and the worker are tightly coupled, and they need to agree on how many requests they will handle simultaneously. This can be done by passing a a single environment variable called `CONCURRENCY` to the worker and one called `OLLAMA_NUM_PARALLEL` to Ollama. (e.g., `CONCURRENCY=2 go run ./worker.go` and `OLLAMA_NUM_PARALLEL=N ollama serve`)
 
 ## Example 
 
