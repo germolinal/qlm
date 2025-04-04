@@ -1,0 +1,50 @@
+# Stage 1: Build the Orchestrator binary
+# Use a specific Go version and Alpine for a smaller builder image
+FROM golang:1.24-alpine AS builder
+
+# Set necessary environment variables for static compilation
+ENV CGO_ENABLED=0 GOOS=linux GOARCH=amd64
+
+WORKDIR /app
+
+# Copy go.mod and go.sum first to leverage Docker cache
+COPY core/go.mod core/go.sum ./
+RUN go mod download
+
+# Copy the rest of the application source code
+COPY core/ ./
+
+# Build the orchestrator binary statically
+RUN go build -ldflags="-s -w" -o /app/qlm_orchestrator ./orchestrator/orchestrator.go
+RUN chmod +x /app/qlm_orchestrator
+RUN ls -l -a /app
+RUN ls -l -a /app/orchestrator
+
+# Stage 2: Create the final minimal image using Distroless base
+FROM gcr.io/distroless/base-debian11
+
+WORKDIR /app
+
+ENV RABBIT_USERNAME=guest
+ENV RABBIT_PASSWORD=guest
+ENV RABBIT_PORT=5672
+ENV RABBIT_URL=127.0.0.1
+ENV PORT=8080
+
+# Copy only the compiled binary from the builder stage
+COPY --from=builder /app/qlm_orchestrator /app/qlm_orchestrator
+
+
+
+# Copy CA certificates potentially needed for TLS connections (base includes them, but good practice)
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+
+# Set user to nonroot for security
+# The 'base' distroless image has user 'nonroot' (UID 65532)
+USER nonroot:nonroot
+
+# Set the entrypoint for the container
+ENTRYPOINT ["/app/qlm_orchestrator"]
+
+# Expose port if the orchestrator listens directly (Update if needed)
+EXPOSE $PORT
