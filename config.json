@@ -1,9 +1,0 @@
-{
-  "model": "gemma2:2b",
-  "workers": [
-    {
-      "address": "http://localhost:4321",
-      "concurrency": 1
-    }
-  ]
-}
