@@ -69,6 +69,7 @@ function addFieldToFormat() {
     const newFieldName = fieldName.value.trim()
     if (newFieldName.length === 0) {
         error("A field name is required for adding a new field")
+        return
     }
     const newFieldFormat = fieldFormat.value
     const newFieldDescription = fieldDescription.value
@@ -79,7 +80,7 @@ function addFieldToFormat() {
     }
     const index = format.findIndex(f => f.name === newFieldName);
     if (index !== -1) {
-        error(`Field named ${newFieldName} already exists`)
+        error(`Field named '${newFieldName}' already exists`)
         return
     }
 
@@ -195,7 +196,16 @@ function appendMsg(m) {
         format.forEach((f) => {
             let td = document.createElement('td')
             if (m.veredict !== undefined && m.veredict[f.name] !== undefined) {
-                td.innerText = m.veredict[f.name]
+                const v = m.veredict[f.name]
+                console.log(typeof v)
+                switch (typeof v) {
+                    case 'boolean':
+                        td.innerHTML = `<code>${v}</code>`
+                        break
+                    default:
+                        td.innerText = v
+                }
+
             } else {
                 td.innerHTML = pendingMsg
             }
