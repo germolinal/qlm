@@ -100,7 +100,8 @@ func handleMsg(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Create request
-	orchestratoUrl := "http://localhost:8080/api/generate"
+	// orchestratoUrl := "http://localhost:8080/api/generate"
+	orchestratoUrl := "http://orchestrator:8080/api/generate"
 	fowardReq, err := http.NewRequest(http.MethodPost, orchestratoUrl, bytes.NewBuffer(payloadBytes))
 	if err != nil {
 		http.Error(w, "Error creating request to other server", http.StatusInternalServerError)
@@ -112,7 +113,6 @@ func handleMsg(w http.ResponseWriter, r *http.Request) {
 	client := &http.Client{}
 	otherResp, err := client.Do(fowardReq)
 	if err != nil {
-		fmt.Println(".... wrong here")
 		http.Error(w, "Error sending request to other server", http.StatusInternalServerError)
 		return
 	}

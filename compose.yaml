@@ -1,0 +1,51 @@
+version: '3.9'
+services:
+  orchestrator:
+    build:
+      dockerfile: Dockerfile.orchestrator
+    command: go run ./orchestrator/orchestrator.go
+    environment:
+      - RABBIT_URL=rabbit
+      - RABBIT_PORT=5672
+      - RABBIT_USER=guest
+      - RABBIT_PASSWORD=guest
+    ports:
+      - "8080:8080"
+    depends_on:
+      rabbit:
+        condition: service_healthy
+  worker:
+    build:
+      dockerfile: Dockerfile.worker
+    command: go run ./worker/worker.go
+    environment:
+      - RABBIT_URL=rabbit
+      - RABBIT_PORT=5672
+      - RABBIT_USER=guest
+      - RABBIT_PASSWORD=guest
+      - CONCURRENCY=2
+      - OLLAMA_HOST=http://host.docker.internal:11434
+    depends_on:
+      rabbit:
+        condition: service_healthy
+
+  playground:
+    build:
+      dockerfile: Dockerfile.playground
+    command: go run ./worker/worker.go
+    ports:
+      - "3000:3000"
+    depends_on:
+      orchestrator:
+        condition: service_started
+
+  rabbit:
+    image: rabbitmq:4.1-rc-management-alpine
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: [ "CMD", "rabbitmq-diagnostics", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3

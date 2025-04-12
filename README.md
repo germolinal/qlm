@@ -44,30 +44,42 @@ that relatively small language models can do a lot!
 4.  Once **Ollama** is done processing the requests, the workers will `POST` the response to the provided `webhook` URL, including the original `id`.
 
 
-## Getting Started
+## Get it to run on your machine
 
-1. Install `Docker` (or `Podman` I guess), `Make`, and `Go`.
-2. (Optionally,) have a look at the `Makefile`, as it might give you an idea of what is going on.
-3. Run the components using the following commands (in different terminals):
+1. **[Install and run Ollama](https://github.com/ollama/ollama)** using `ollama serve` or the desktop application. The worker will make requests to it. Make sure the `model` you use in the requests to the orchestrators (e.g., `gemma3`) is downloaded and loaded into Ollama. 
+
+Then there are two options
+
+### Using Docker and Docker-compose (recommended for quick starts)
+
+2. **Run `docker-compose build && docker-compose up`** - This will run the three main elements of the system: the Orchestrator, Worker, and Rabbit (Ollama is assumed to be already running), and it will also run the playground. Go to:
+    * `http://localhost:3000` to check the playground, where you can test some stuff
+    * `http://localhost:15672` to see Rabbit dashboard (password and username are `guest`)
+
+
+### Using Go
+
+2. Install `Docker` (or `Podman` I guess)
+3. Have a look at the `Makefile`, as it might give you an idea of what is going on.
+4. Run the components using the following commands (in different terminals):
     * `make rabbit` will start the queue that the orchestrator and the worker need to listen to. This needs to be running for the rest to work.
     * `make orchestrator` will run the orchestrator **without Docker** (there are also commands to build and run the container in the `Makefile`)
-    * `make worker` runs the worker with no container (I am still thinking about how to pack this and Ollama together better.)
-    * **[Install and run Ollama](https://github.com/ollama/ollama)** using `ollama serve` or the desktop application. The worker will make requests to it. Make sure the `model` you use in the requests to the orchestrators (e.g., `gemma3`) is downloaded and loaded into Ollama. 
-    * OPTIONAL: `make playground` (available at `http://localhost:3000`).
+    * `make worker` runs the worker with no container (I am still thinking about how to pack this and Ollama together better.)    
+    * `make playground` (available at `http://localhost:3000`).
 
 > Ollama and the worker are tightly coupled, and they need to agree on how many requests they will handle simultaneously. This can be done by passing a a single environment variable called `CONCURRENCY` to the worker and one called `OLLAMA_NUM_PARALLEL` to Ollama. (e.g., `CONCURRENCY=2 go run ./worker.go` and `OLLAMA_NUM_PARALLEL=N ollama serve`)
 
-## Example 
+## Making a request
 
 If you sent this in the request:
 
-```json
-{
-  "model": "gemma3",
+```shell
+curl -X POST http://localhost:8080/api/generate -d  '{
+  "model": "gemma2",
   "prompt": "Translate this into english: Mi nombre es Rodrigo, y me gusta mucho el lenguaje",
   "webhook": "https://your-webhook-url.com/receive",
   "id": "12345"
-}
+}'
 ```
 
 Your webook will receive something like this:
