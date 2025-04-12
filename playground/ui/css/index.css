@@ -84,3 +84,7 @@ th > div {
   align-items: center;
   text-align: center;
 }
+
+tr > * {
+  padding: 0.4em 0.8em;
+}
