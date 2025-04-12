@@ -321,8 +321,9 @@ async function submit(msg) {
         model,
         prompt: msg,
         id,
-        webhook: protocol + '//' + window.location.host + '/webhook',
+        webhook: protocol + '//' + "playground:3000" + '/webhook',
         format: structuredOutput(),
+        system: "you are a professional message proof-reader, making sure that people's emails are appropriate for the amazing corporation we are. You will receive user messages, which are emails"
     });
     // queue message
     const ret = await fetch("/msg", {
