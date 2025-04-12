@@ -17,8 +17,6 @@ COPY core/ ./
 # Build the orchestrator binary statically
 RUN go build -ldflags="-s -w" -o /app/qlm_orchestrator ./orchestrator/orchestrator.go
 RUN chmod +x /app/qlm_orchestrator
-RUN ls -l -a /app
-RUN ls -l -a /app/orchestrator
 
 # Stage 2: Create the final minimal image using Distroless base
 FROM gcr.io/distroless/base-debian11
