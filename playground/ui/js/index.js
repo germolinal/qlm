@@ -56,11 +56,13 @@ const fieldFormat = getById("field-format")
 const fieldRequired = getById("field-required")
 const fieldDescription = getById("field-description")
 const modelName = getById("model-name")
+const systemPrompt = getById("system-prompt")
 
 var format = null
 
 
 const messages = []
+
 
 //////////////////////////
 // SCHEMA HANDLING
@@ -174,8 +176,8 @@ socket.onerror = function (error) {
 // MESSAGES STATE
 //////////////////////////
 
-const pendingMsg = '<small style="opacity:0.6">...pending</small>'
 
+const pendingMsg = '<small style="opacity:0.6">...pending</small>'
 /**
  * Adds a new message to the list of messages
  * @param {Object} m the message to add to the rendering
@@ -228,6 +230,15 @@ function appendMsg(m) {
 
 
 }
+
+function getSystemPrompt() {
+    const v = systemPrompt.value.trim()
+    if (v.length === 0) {
+        return "You are a helpful assistant."
+    }
+    return v
+}
+
 /**
  * Re renders the messages on the UI
  */
@@ -323,7 +334,7 @@ async function submit(msg) {
         id,
         webhook: protocol + '//' + "playground:3000" + '/webhook',
         format: structuredOutput(),
-        system: "you are a professional message proof-reader, making sure that people's emails are appropriate for the amazing corporation we are. You will receive user messages, which are emails"
+        system: getSystemPrompt(),
     });
     // queue message
     const ret = await fetch("/msg", {

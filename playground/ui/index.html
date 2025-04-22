@@ -10,41 +10,54 @@
 </head>
 
 <body>
+
     <p id="toast">
         <span id="toast-icon"></span>
         <span id="toast-msg"></span>
     </p>
-    <h1>
-        <code>QLM</code> playground
-    </h1>
-    <textarea id="msgwriter" placeholder="Write  message"></textarea>
-    <section>
-        <h1>Model parameters</h1>
-        <input type="text" name="model" id="model-name" placeholder="model" value="gemma2" />
-    </section>
-    <section>
-        <h1>Structured data output</h1>
-        <div class="flex">
-            <input type="text" name="field-name" id="field-name" placeholder="Field name" />
-            <input type="text" name="field-description" id="field-description" placeholder="Field description" />
-            <select id="field-format">
-                <option value="boolean">Boolean</option>
-                <option value="string">String</option>
-                <option value="number">Number</option>
-            </select>
-            <select id="field-required">
-                <option value="required">Required</option>
-                <option value="optional">Optional</option>
-            </select>
+    <main>
+        <section id="results-box">
+            <h1 id="app-title">
+                <code>QLM</code> playground
+            </h1>
+            <h1>Input</h1>
+            <textarea id="msgwriter" placeholder="Write  message"></textarea>
+            <table id="main-table">
+                <thead>
+                    <tr id="messages-header"></tr>
+                </thead>
+                <tbody id="messages-display"></tbody>
+            </table>
+        </section>
+
+        <div id="input-box">
+            <section>
+                <h1>Model parameters</h1>
+                <div class="flex-col">
+                    <input type="text" name="model" id="model-name" placeholder="model" value="gemma2" />
+                    <textarea id="system-prompt" placeholder="You are a helpful assistant"></textarea>
+                </div>
+            </section>
+            <section>
+                <h1>Structured data output</h1>
+                <div class="flex-col">
+                    <input type="text" name="field-name" id="field-name" placeholder="Field name" />
+                    <input type="text" name="field-description" id="field-description"
+                        placeholder="Field description" />
+                    <select id="field-format">
+                        <option value="boolean">Boolean</option>
+                        <option value="string">String</option>
+                        <option value="number">Number</option>
+                    </select>
+                    <select id="field-required">
+                        <option value="required">Required</option>
+                        <option value="optional">Optional</option>
+                    </select>
+                </div>
+                <button id="add-column-button">Add field</button>
+            </section>
         </div>
-        <button id="add-column-button">Add field</button>
-    </section>
-    <table id="main-table">
-        <thead>
-            <tr id="messages-header"></tr>
-        </thead>
-        <tbody id="messages-display"></tbody>
-    </table>
+    </main>
 </body>
 
 </html>

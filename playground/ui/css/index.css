@@ -6,16 +6,25 @@ code {
   box-sizing: border-box;
 }
 
-code {
-  font-family: 'Courier New', Courier, monospace;
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100vh;
+}
+body {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+main {
+  height: 100%;
+  display: flex;
+  justify-content: center;
 }
 
-.flex {
-  display: flex;  
-  margin-bottom: 4px;
-}
-.flex > * {
-  margin-right: 4px;
+code {
+  font-family: 'Courier New', Courier, monospace;
 }
 
 p#toast {
@@ -43,6 +52,7 @@ select {
   border-radius: 0.6em;
   resize: none;
   padding: 0.4em;
+  background-color: white;
 }
 
 button {
@@ -51,7 +61,18 @@ button {
   padding: 0.4em 1.4em;
   background-color: black;
   color: white;
+}
 
+#add-column-button {
+  margin-top: 1em;
+}
+
+#app-title {
+  font-size: 2.5rem;
+  font-weight: bold;
+  margin-bottom: 0.5em;
+  opacity: 1;
+  margin-top: 0;
 }
 
 section {
@@ -85,6 +106,27 @@ th > div {
   text-align: center;
 }
 
+.flex-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.flex-col > * {
+  margin: 0.2em 0;
+}
+
 tr > * {
   padding: 0.4em 0.8em;
+}
+
+#results-box {
+  flex-grow: 1;
+  padding: 0.5rem;
+}
+
+#input-box {
+  width: 300px;
+  padding: 0.5rem;
+  background: rgb(245, 245, 245);
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.16), 0 3px 6px rgba(0, 0, 0, 0.23);
 }
